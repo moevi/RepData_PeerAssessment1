@@ -1,5 +1,7 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "Kpakpo Moevi"
+date: "June 6, 2017"
 output: 
   html_document:
     keep_md: true
@@ -7,19 +9,162 @@ output:
 
 
 ## Loading and preprocessing the data
+#1.Code for reading in the dataset and/or processing the data
+Load the data 
+```{r , echo = TRUE}
+if (!file.exists("activity.csv")) {
+  activity<-  unzip("activity.zip")
+}
+activity_moni_data <- read.csv("activity.csv")
+
+```
+Process the data
+```{r ,echo =TRUE}
+ activity_moni_data$date<-as.Date(activity_moni_data$date)
+ activity_moni_data$interval<-as.factor(activity_moni_data$interval)
+ head(activity_moni_data$date)
+ head(activity_moni_data$interval)
+```
+ Load package plyr
 
 
+```{r, echo = TRUE}
+library(plyr)
+number_of_steps_per_day<-ddply(activity_moni_data,.(date),summarise,sum = sum(steps,na.rm = TRUE))
+head(number_of_steps_per_day)
+#2.Histogram of the total number of steps taken each day
+
+``` {r, echo =TRUE}
+
+hist(number_of_steps_per_day$sum,col = "blue",main = "Total number of steps taken each day Oct-Nov 2012")
+```
+```{r, echo = TRUE}
+
+```
 
 ## What is mean total number of steps taken per day?
+#3.Mean and median number of steps taken each day
 
+```{r , echo = TRUE}
+TheMean = mean(number_of_steps_per_day$sum)
+TheMedian = median(number_of_steps_per_day$sum)
+print(TheMean)
+print(TheMedian)
+```
 
 
 ## What is the average daily activity pattern?
 
+#4.Time series plot of the average number of steps taken
 
+```{r, echo = TRUE}
+library(ggplot2)
+number_of_steps_per_interval<-ddply(activity_moni_data,.(interval),summarise,sum = sum(steps,na.rm = TRUE))
+head(number_of_steps_per_interval)
+
+```
+```{r, echo = TRUE}
+g<-ggplot(number_of_steps_per_interval,aes(x=interval,y = sum,group =1))
+g+geom_line()+ 
+xlab(" Interval") + 
+ylab("Average Number of Steps") +
+ggtitle("Time series plot of the average number of steps taken")
+```
+```{r, echo = TRUE}
+
+```
+#5.The 5-minute interval that, on average, contains the maximum number of steps
+```{r, echo = TRUE}
+number_of_steps_per_interval[which(number_of_steps_per_interval$sum==(max(number_of_steps_per_interval$sum))),]
+
+```
 
 ## Imputing missing values
+#6.Code to describe and show a strategy for imputing missing data
+```{r, echo = TRUE}
 
+```
+```{r, echo = TRUE}
+
+```
+Lets count the misssing values
+
+```{r, echo = TRUE}
+number_missing_values<-sum(is.na(activity_moni_data))
+number_missing_values
+```
+The number of missing values in the dataset is equal to the number of missing value in the steps which is 2304.
+The technique is to replace the missing values by the mean
+```{r , echo = TRUE}
+na_position<-which(is.na(activity_moni_data$steps))
+mean_vec <- rep(mean(activity_moni_data$steps, na.rm=TRUE), times=length(na_position))
+
+
+
+```
+```{r,echo = TRUE}
+activity_moni_data[na_position,"steps"]<-mean_vec
+head(activity_moni_data)
+```
+#7.Histogram of the total number of steps taken each day after missing values are imputed
+
+```{r, echo = TRUE}
+Compl_activity_moni_data<-ddply(activity_moni_data,.(date),summarise,sum = sum(steps))
+hist(Compl_activity_moni_data$sum,col = "black", main = "Total number of steps taken each day after missing values are imputed")
+```
+```{r,echo = TRUE}
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+#8.Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+We need to transform the data in order to integrate the weekdays and weekends 
+```{r,echo = TRUE}
+act1<-read.csv("activity.csv")
+act1$date<-as.POSIXct(act1$date,format = "%Y-%m-%d")
+```
+Let's compute the weekday from the date attributte
+```{r,echo =TRUE}
+act1<-data.frame(date = act1$date,
+                 weekday =  tolower(weekdays(act1$date)),
+                 steps = act1$steps,
+                 interval= act1$interval)
+head(act1)
+```
+Now lets identify whether the day is weekday or weekend
+
+```{r , echo =TRUE}
+act1<-cbind(act1,datetype=ifelse(act1$weekday=="saturday" | act1$weekday == "sunday","weekend","weekday"))
+head(act1)
+```
+
+```{r , echo =TRUE}
+act1<-data.frame(date=act1$date,
+                     weekday = act1$weekday, 
+                     datetype=act1$datetype,
+                     steps = act1$steps,
+                     interval = act1$interval)
+head(act1)
+
+```
+```{r , echo =TRUE}
+na_position<-which(is.na(act1$steps))
+mean_vec2 <- rep(mean(act1$steps, na.rm=TRUE), times=length(na_position))
+act1[na_position,"steps"]<-mean_vec2
+head(act1)
+```
+```{r , echo =TRUE}
+library(lattice)
+mean_data<-aggregate(act1$steps, 
+                       by=list(act1$datetype, 
+                               act1$weekday,
+                               act1$interval),FUN= mean)
+names(mean_data)<-c("datetype", "weekday", "interval", "mean")
+head(mean_data)
+```
+```{r , echo =TRUE}
+library(lattice)
+xyplot(mean ~ interval|datetype,mean_data,type ="l",lwd=1, xlab="Interval",ylab="Number of steps", layout=c(1,2))
+
+```
+
